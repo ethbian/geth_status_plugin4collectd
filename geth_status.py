@@ -1,4 +1,5 @@
 """
+v0.2
 This is a collectd plugin reporting different geth stats.
 For more details see https://github.com/ethbian/geth_status_plugin4collectd
 """
@@ -17,12 +18,14 @@ SERVICE = 'geth'
 BINARY = '/usr/local/bin/geth'
 IPCPATH = '/mnt/ssd/datadir/geth.ipc'
 
+
 def init():
     """
     This method has been registered as the init callback; this gives the plugin a way to do startup
     actions.
     """
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+
 
 def conf(config):
     """
@@ -42,9 +45,11 @@ def conf(config):
             global IPCPATH
             IPCPATH = val
         else:
-            collectd.info('geth_status: Ignoring unknown config key: {}'.format(key))
+            collectd.info(
+                'geth_status: Ignoring unknown config key: {}'.format(key))
 
     collectd.info('geth_status: plugin ready')
+
 
 def read_geth_stats():
     """
@@ -52,58 +57,89 @@ def read_geth_stats():
     to dispatch metrics.
     """
     try:
-        geth_service = os.system('systemctl is-active --quiet {}'.format(SERVICE))
+        geth_service = os.system(
+            'systemctl is-active --quiet {}'.format(SERVICE))
     except Exception as exception:
-        collectd.warning('Error checking geth service status: {}'.format(exception))
+        collectd.warning(
+            'Error checking geth service status: {}'.format(exception))
         geth_service = 999
 
+    read_ok = True
     sync_percent = 0
     binary = True if os.path.exists(BINARY) else False
     ipc = True if os.path.exists(IPCPATH) else False
     if binary and ipc and geth_service == 0:
         try:
-            peers = subprocess.check_output('{} {}{} {}'.\
-                    format(BINARY, 'attach ipc:', IPCPATH, '--exec net.peerCount'),\
-                    shell=True)
-            current = subprocess.check_output('{} {}{} {}'.\
-                      format(BINARY, 'attach ipc:', IPCPATH, '--exec eth.syncing.currentBlock'),\
-                      shell=True)
-            highest = subprocess.check_output('{} {}{} {}'.\
-                      format(BINARY, 'attach ipc:', IPCPATH, '--exec eth.syncing.highestBlock'),\
-                      shell=True)
+            peers = subprocess.check_output('{} {}{} {}'.
+                                            format(BINARY, 'attach ipc:',
+                                                   IPCPATH, '--exec net.peerCount'),
+                                            shell=True)
+            current = subprocess.check_output('{} {}{} {}'.
+                                              format(
+                                                  BINARY, 'attach ipc:', IPCPATH, '--exec eth.syncing.currentBlock'),
+                                              shell=True)
+            highest = subprocess.check_output('{} {}{} {}'.
+                                              format(
+                                                  BINARY, 'attach ipc:', IPCPATH, '--exec eth.syncing.highestBlock'),
+                                              shell=True)
+
+            # https://github.com/ethereum/go-ethereum/issues/16147
+            if not (highest in vars() or highest in globals()) and peers > 0:
+                highest = subprocess.check_output('{} {}{} {}'.
+                                                  format(
+                                                      BINARY, 'attach ipc:', IPCPATH, '--exec eth.blockNumber'),
+                                                  shell=True)
+                current = highest
+            else:
+                read_ok = False
+
             if highest != 0 and current != 0:
                 sync_percent = float(current)/float(highest)*100
         except Exception as exception:
             collectd.warning('Getting geth stats error: {}'.format(exception))
+            read_ok = False
     else:
-        peers = 0
-        current = 0
-        highest = 0
+        read_ok = False
 
-    collectd.Values(plugin='geth_status',
-                    type_instance='service',
-                    type='gauge',
-                    values=[geth_service]).dispatch()
+    if read_ok:
+        collectd.Values(plugin='geth_status',
+                        type_instance='service',
+                        type='gauge',
+                        values=[geth_service]).dispatch()
 
-    collectd.Values(plugin='geth_status',
-                    type_instance='peers',
-                    type='gauge',
-                    values=[peers]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='peers',
+                        type='gauge',
+                        values=[peers]).dispatch()
 
-    collectd.Values(plugin='geth_status',
-                    type_instance='current',
-                    type='gauge',
-                    values=[current]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='current',
+                        type='gauge',
+                        values=[current]).dispatch()
 
-    collectd.Values(plugin='geth_status',
-                    type_instance='highest',
-                    type='gauge',
-                    values=[highest]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='highest',
+                        type='gauge',
+                        values=[highest]).dispatch()
 
-    collectd.Values(plugin='geth_status',
-                    type_instance='sync',
-                    type='gauge',
-                    values=[round(sync_percent, 3)]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='sync',
+                        type='gauge',
+                        values=[round(sync_percent, 3)]).dispatch()
+    else:
+        collectd.Values(plugin='geth_status',
+                        type_instance='service',
+                        type='gauge',
+                        values=[geth_service]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='sync',
+                        type='gauge',
+                        values=[-1]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='peers',
+                        type='gauge',
+                        values=[-1]).dispatch()
+
 
 if __name__ != '__main__':
     collectd.register_init(init)
