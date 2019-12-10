@@ -1,6 +1,6 @@
 """
 v0.2
-This is a collectd plugin reporting different geth stats.
+This is a collectd plugin reporting Ethereum geth status.
 For more details see https://github.com/ethbian/geth_status_plugin4collectd
 """
 
