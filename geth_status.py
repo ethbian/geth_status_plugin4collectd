@@ -1,5 +1,5 @@
 """
-v0.2
+v0.3
 This is a collectd plugin reporting Ethereum geth status.
 For more details see https://github.com/ethbian/geth_status_plugin4collectd
 """
@@ -84,14 +84,12 @@ def read_geth_stats():
                                               shell=True)
 
             # https://github.com/ethereum/go-ethereum/issues/16147
-            if not (highest in vars() or highest in globals()) and peers > 0:
+            if (not highest) and peers > 0:
                 highest = subprocess.check_output('{} {}{} {}'.
                                                   format(
                                                       BINARY, 'attach ipc:', IPCPATH, '--exec eth.blockNumber'),
                                                   shell=True)
                 current = highest
-            else:
-                read_ok = False
 
             if highest != 0 and current != 0:
                 sync_percent = float(current)/float(highest)*100

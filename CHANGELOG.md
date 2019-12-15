@@ -2,6 +2,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+##  [v0.3] - 2019-12-15
+
+* not fully sync read bug
+
 ##  [v0.2] - 2019-12-10
 
 * corner cases
