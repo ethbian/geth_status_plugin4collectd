@@ -17,6 +17,7 @@ except ImportError:
 SERVICE = 'geth'
 BINARY = '/usr/local/bin/geth'
 IPCPATH = '/mnt/ssd/datadir/geth.ipc'
+SSD = '/mnt/ssd'
 
 
 def init():
@@ -44,6 +45,9 @@ def conf(config):
         elif key == 'ipcpath':
             global IPCPATH
             IPCPATH = val
+        elif key == 'ssd':
+            global SSD
+            SSD = val
         else:
             collectd.info(
                 'geth_status: Ignoring unknown config key: {}'.format(key))
@@ -63,6 +67,17 @@ def read_geth_stats():
         collectd.warning(
             'Error checking geth service status: {}'.format(exception))
         geth_service = 999
+
+    ssd_free = -1
+    if os.path.ismount(SSD):
+        try:
+            ssd_free = subprocess.check_output(
+                'df --output=avail {} |tail -1'.format(SSD), shell=True)
+        except Exception as exception:
+            collectd.warning(
+                'Error checking free space on SSD: {}'.format(exception))
+    else:
+        collectd.warning('{} is not a mount point'.format(SSD))
 
     read_ok = True
     sync_percent = 0
@@ -104,22 +119,22 @@ def read_geth_stats():
                         type_instance='service',
                         type='gauge',
                         values=[geth_service]).dispatch()
-
+        collectd.Values(plugin='geth_status',
+                        type_instance='ssd_free',
+                        type='gauge',
+                        values=[ssd_free]).dispatch()
         collectd.Values(plugin='geth_status',
                         type_instance='peers',
                         type='gauge',
                         values=[peers]).dispatch()
-
         collectd.Values(plugin='geth_status',
                         type_instance='current',
                         type='gauge',
                         values=[current]).dispatch()
-
         collectd.Values(plugin='geth_status',
                         type_instance='highest',
                         type='gauge',
                         values=[highest]).dispatch()
-
         collectd.Values(plugin='geth_status',
                         type_instance='sync',
                         type='gauge',
@@ -129,6 +144,10 @@ def read_geth_stats():
                         type_instance='service',
                         type='gauge',
                         values=[geth_service]).dispatch()
+        collectd.Values(plugin='geth_status',
+                        type_instance='ssd_free',
+                        type='gauge',
+                        values=[ssd_free]).dispatch()
         collectd.Values(plugin='geth_status',
                         type_instance='sync',
                         type='gauge',
