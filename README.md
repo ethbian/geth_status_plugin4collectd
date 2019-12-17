@@ -1,7 +1,7 @@
 # geth_status_plugin4collectd
 A collectd plugin reporting Ethereum geth basic status.  
 Tested on RPi 4 with Raspbian.  
-Plugin reports (via IPC) **geth service status** (running/stopped), **number of currently connected peers**(nodes), network and local **latest block number** and - based on these two - **sync percentage**.
+Plugin reports (via IPC) **geth service status** (running/stopped), **number of currently connected peers**(nodes), network and local **latest block number** and - based on these two - **sync percentage**. Additionally **free space on SSD** drive.
 
 ## quick start
 - install collectd  
@@ -23,6 +23,7 @@ LoadPlugin python
         Service "geth"
         Binary "/usr/local/bin/geth/geth"
         IPCpath "/mnt/ssd/datadir/geth.ipc"
+        SSD "/mnt/ssd"
     </Module>
 </Plugin>
 ```
@@ -36,6 +37,7 @@ LoadPlugin python
 - options:  
 **Service** - service name used with *systemctl* / *service* commands for stopping and starting geth binary  
 **Binary** - path to the geth binary  
-**IPCpath** - path to the *geth.ipc* file (usually located in the datadir directory)
+**IPCpath** - path to the *geth.ipc* file (usually located in the datadir directory)  
+**SSD** - SSD mount point (directory)
 - pull requests are more than welcome if you're fixing something
 
